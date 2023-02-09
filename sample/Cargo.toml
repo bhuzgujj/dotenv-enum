@@ -1,0 +1,20 @@
+[package]
+name = "sample"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15.0"
+dotenv-enum = { path = ".." }
+
+# Enum iteration
+strum = "0.24.1"
+strum_macros = "0.24.1"
+
+regex = "1.5.4"
+quote = "1.0.23"
+
+# Testing
+test-case = "2.2.2"
