@@ -1,5 +1,4 @@
 use std::env;
-use std::env::VarError;
 use std::fmt::Debug;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
@@ -17,17 +16,28 @@ pub trait EnvironmentVariable
         <Self as IntoEnumIterator>::iter().any(|env_var| env_var.get_key() == key)
     }
 
-    fn get_value_result(&self) -> Result<String, VarError> {
-        env::var(self.get_key())
+    fn get_value(&self) -> Result<String, String> {
+        match env::var(self.get_key()) {
+            Ok(var) => Result::Ok(var),
+            Err(_) => Result::Err(self.get_error_description())
+        }
     }
 
     fn unwrap_value(&self) -> String {
-        self.get_value_result().unwrap_or_else(|_| { panic!("{}", self.get_error_description()) })
+        self.get_value().unwrap_or_else(|_| { panic!("{}", self.get_error_description()) })
     }
 
-    fn get_casted_value<T: FromStr>(&self) -> Result<T, <T as FromStr>::Err>
+    fn get_casted_value<T: FromStr>(&self) -> Result<T, String>
         where <T as FromStr>::Err: Debug {
-        self.unwrap_value().parse::<T>()
+        match self.unwrap_value().parse::<T>() {
+            Ok(var) => Result::Ok(var),
+            Err(_) => Result::Err(format!("Cannot cast {} into {}", self.get_key(), std::any::type_name::<T>()))
+        }
+    }
+
+    fn unwrap_casted_value<T: FromStr>(&self) -> T
+        where <T as FromStr>::Err: Debug {
+        self.get_casted_value::<T>().unwrap_or_else(|_| panic!("Cannot cast {} into {}", self.get_key(), std::any::type_name::<T>()))
     }
 }
 
@@ -109,7 +119,8 @@ macro_rules! env_enum {
     };
 }
 
-#[cfg(test)] extern crate self as dotenv_enum;
+#[cfg(test)]
+extern crate self as dotenv_enum;
 #[cfg(test)] env_enum!(AnEnv, an_test, [Lol, TeamJaws, Mdr]);
 #[cfg(test)] env_enum!(En, en_test, [Kappa, Pog, Mdr]);
 
