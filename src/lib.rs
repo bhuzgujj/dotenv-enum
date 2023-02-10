@@ -66,7 +66,7 @@ pub fn split_string_on_capitalize(value: String) -> Vec<String> {
 #[macro_export]
 macro_rules! env_enum {
     ($enum_name: ident, $env_test_name: ident, [$($var_name: ident), *]) => {
-        #[derive(Copy, Clone, EnumIter)]
+        #[derive(Copy, Clone, strum_macros::EnumIter)]
         pub enum $enum_name {
             $($var_name,)*
         }
@@ -110,7 +110,6 @@ macro_rules! env_enum {
 }
 
 #[cfg(test)] extern crate self as dotenv_enum;
-#[cfg(test)] use strum_macros::EnumIter;
 #[cfg(test)] env_enum!(AnEnv, an_test, [Lol, TeamJaws, Mdr]);
 #[cfg(test)] env_enum!(En, en_test, [Kappa, Pog, Mdr]);
 
