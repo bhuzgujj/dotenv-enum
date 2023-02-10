@@ -13,8 +13,8 @@ pub trait EnvironmentVariable
         format!("No {} in .env file", self.get_key())
     }
 
-    fn does_key_exist(value: &str) -> bool where Self: IntoEnumIterator {
-        <Self as IntoEnumIterator>::iter().any(|env_var| env_var.get_key() == value)
+    fn does_key_exist(key: &str) -> bool where Self: IntoEnumIterator {
+        <Self as IntoEnumIterator>::iter().any(|env_var| env_var.get_key() == key)
     }
 
     fn get_value_result(&self) -> Result<String, VarError> {
