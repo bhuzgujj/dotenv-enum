@@ -109,16 +109,10 @@ macro_rules! env_enum {
     };
 }
 
-#[cfg(test)]
-extern crate self as dotenv_enum;
-
-#[cfg(test)]
-use strum_macros::EnumIter;
-
-#[cfg(test)]
-env_enum!(AnEnv, an_test, [Lol, TeamJaws, Mdr]);
-#[cfg(test)]
-env_enum!(En, en_test, [Kappa, Pog, Mdr]);
+#[cfg(test)] extern crate self as dotenv_enum;
+#[cfg(test)] use strum_macros::EnumIter;
+#[cfg(test)] env_enum!(AnEnv, an_test, [Lol, TeamJaws, Mdr]);
+#[cfg(test)] env_enum!(En, en_test, [Kappa, Pog, Mdr]);
 
 #[cfg(test)]
 mod tests {
