@@ -1,6 +1,6 @@
 extern crate dotenv_enum;
 
-use dotenv_enum::{env_enum, EnvironmentVariable, create_env_string};
+use dotenv_enum::{env_enum, EnvironmentVariable};
 use strum::IntoEnumIterator;
 
 env_enum!(LocationsEnv, locations_test, [Folder, File]);
