@@ -279,6 +279,9 @@ pub trait EnvironmentVariable
 ///
 /// env_enum!(TheEnumNameEnv, enum_test_module, [Value]);
 /// ```
+/// The first value is the enum name (the suffix Env will be removed for the key value)
+/// The second value is the name of the test module
+/// The third value is a list of enum values
 #[macro_export]
 macro_rules! env_enum {
     ($enum_name: ident, $env_test_name: ident, [$($var_name: ident), *]) => {
