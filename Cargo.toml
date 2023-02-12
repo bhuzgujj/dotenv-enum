@@ -8,7 +8,7 @@ repository = "https://github.com/bhuzgujj/dotenv-enum.git"
 rust-version = "1.69.0"
 description = "This crate creates an enum from a `.env` variable and simplify acces to them."
 readme = "README.md"
-keywords = ["dotenv", "enum", "environment variables"]
+keywords = ["dotenv", "enum", "environment-variables"]
 
 [dependencies]
 dotenv = "0.15.0"
