@@ -2,6 +2,8 @@
 This crate creates an enum from a `.env` variable and simplify acces to them.
 The macro will create tests suite to check if the variable is present in the `.env` file.
 
+*note: this is my first crate, so it may not be the best for production*
+
 ## Usage 
 ### With macro
 ```rust
