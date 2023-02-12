@@ -43,7 +43,8 @@ use env_errors::EnvEnumResult;
 ///
 /// mod enum_test_module {
 ///     extern crate self as my_crate;
-///     use strum::IntoEnumIterator;
+///     use std::assert_ne;
+/// use strum::IntoEnumIterator;
 ///     use dotenv_enum::EnvironmentVariable;
 ///
 ///     #[allow(non_snake_case)]
