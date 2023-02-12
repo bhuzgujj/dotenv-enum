@@ -1,7 +1,7 @@
 [package]
 name = "dotenv-enum"
 version = "0.2.1"
-edition = "2023"
+edition = "2021"
 authors = ["Émile Boucher <emileboucheracc@gmail.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/bhuzgujj/dotenv-enum.git"
