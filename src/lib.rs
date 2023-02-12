@@ -1,7 +1,10 @@
+pub mod env_errors;
+
 use std::env;
 use std::fmt::Debug;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
+use env_errors::EnvEnumResult;
 
 /// # EnvironmentVariable
 /// This trait is a link between the dotenv and your enums.
@@ -116,6 +119,7 @@ pub trait EnvironmentVariable
     /// ```
     /// use dotenv_enum::{env_enum, EnvironmentVariable};
     /// use strum::IntoEnumIterator;
+    /// use dotenv_enum::env_errors::EnvEnumResult;
     ///
     /// dotenv::dotenv().ok();
     /// env_enum!(TheEnumNameEnv, enum_test_module, [ValueOne, ValueTwo]);
@@ -123,15 +127,15 @@ pub trait EnvironmentVariable
     /// // Assuming the line:
     /// //      THE_ENUM_NAME_VALUE_ONE = "val"
     /// // exist in the .env
-    /// assert_eq!(TheEnumNameEnv::ValueOne.get_value(), Ok("val".to_string()));
+    /// assert_eq!(TheEnumNameEnv::ValueOne.get_value(), EnvEnumResult::Ok("val".to_string()));
     ///
     /// // Assuming the key THE_ENUM_NAME_VALUE_TWO does not exist in .env
-    /// assert_eq!(TheEnumNameEnv::ValueTwo.get_value(), Err("No THE_ENUM_NAME_VALUE_TWO in .env file".to_string()));
+    /// assert_eq!(TheEnumNameEnv::ValueTwo.get_value(), EnvEnumResult::Absent("No THE_ENUM_NAME_VALUE_TWO in .env file".to_string()));
     /// ```
-    fn get_value(&self) -> Result<String, String> {
+    fn get_value(&self) -> EnvEnumResult<String> {
         match env::var(self.get_key()) {
-            Ok(var) => Result::Ok(var),
-            Err(_) => Result::Err(format!("No {} in .env file", self.get_key()))
+            Ok(var) => EnvEnumResult::Ok(var),
+            Err(_) => EnvEnumResult::Absent(format!("No {} in .env file", self.get_key()))
         }
     }
 
@@ -150,13 +154,14 @@ pub trait EnvironmentVariable
     /// assert_eq!(TheEnumNameEnv::ValueOne.unwrap_value(), "val".to_string());
     /// ```
     fn unwrap_value(&self) -> String {
-        self.get_value().unwrap_or_else(|message| { panic!("{}", message) })
+        self.get_value().panic_if_absent()
     }
 
     /// Get the value from the .env related to the enum value and casted it into the type T
     /// ```
     /// use dotenv_enum::{env_enum, EnvironmentVariable};
     /// use strum::IntoEnumIterator;
+    /// use dotenv_enum::env_errors::EnvEnumResult;
     ///
     /// dotenv::dotenv().ok();
     /// env_enum!(TheEnumNameEnv, enum_test_module, [ValueOne, ValueTwo]);
@@ -164,21 +169,25 @@ pub trait EnvironmentVariable
     /// // Assuming the line:
     /// //      THE_ENUM_NAME_VALUE_ONE = "val"
     /// // exist in the .env
-    /// assert_eq!(TheEnumNameEnv::ValueOne.get_casted_value::<String>(), Ok("val".to_string()));
-    /// assert_eq!(TheEnumNameEnv::ValueOne.get_casted_value::<u32>(), Err("Cannot cast THE_ENUM_NAME_VALUE_ONE into u32".to_string()));
+    /// assert_eq!(TheEnumNameEnv::ValueOne.get_casted_value::<String>(), EnvEnumResult::Ok("val".to_string()));
+    /// assert_eq!(TheEnumNameEnv::ValueOne.get_casted_value::<u32>(), EnvEnumResult::IncorrectCast("Cannot cast THE_ENUM_NAME_VALUE_ONE into u32".to_string()));
     ///
     /// // Assuming the key THE_ENUM_NAME_VALUE_TWO does not exist in .env
-    /// assert_eq!(TheEnumNameEnv::ValueTwo.get_value(), Err("No THE_ENUM_NAME_VALUE_TWO in .env file".to_string()));
+    /// assert_eq!(TheEnumNameEnv::ValueTwo.get_value(), EnvEnumResult::Absent("No THE_ENUM_NAME_VALUE_TWO in .env file".to_string()));
     /// ```
-    fn get_casted_value<T: FromStr>(&self) -> Result<T, String>
+    fn get_casted_value<T: FromStr + std::clone::Clone>(&self) -> EnvEnumResult<T>
         where <T as FromStr>::Err: Debug {
-        match self.get_value()?.parse::<T>() {
-            Ok(var) => Result::Ok(var),
-            Err(_) => Result::Err(format!(
-                "Cannot cast {} into {}",
-                self.get_key(),
-                std::any::type_name::<T>()
-            )),
+        match self.get_value() {
+            EnvEnumResult::Ok(val) => match val.parse::<T>() {
+                Ok(var) => EnvEnumResult::Ok(var),
+                Err(_) => EnvEnumResult::IncorrectCast(format!(
+                    "Cannot cast {} into {}",
+                    self.get_key(),
+                    std::any::type_name::<T>()
+                )),
+            },
+            EnvEnumResult::Absent(err) => EnvEnumResult::Absent(err),
+            EnvEnumResult::IncorrectCast(err) => EnvEnumResult::IncorrectCast(err)
         }
     }
 
@@ -196,9 +205,9 @@ pub trait EnvironmentVariable
     /// // exist in the .env
     /// assert_eq!(TheEnumNameEnv::ValueOne.unwrap_casted_value::<String>(), "val".to_string());
     /// ```
-    fn unwrap_casted_value<T: FromStr>(&self) -> T
+    fn unwrap_casted_value<T: FromStr + std::clone::Clone>(&self) -> T
         where <T as FromStr>::Err: Debug {
-        self.get_casted_value::<T>().unwrap_or_else(|message| panic!("{}", message))
+        self.get_casted_value::<T>().panic_if_absent()
     }
 
     /// Create a full capitalize, seperated by underscored, without suffix Env, and merge name_value
@@ -326,24 +335,30 @@ mod tests {
     use super::*;
     use test_case::test_case;
 
-    #[test_case(AnEnv::Lol, ("AN_LOL", Result::Ok("waw".to_string())); "an lol")]
-    #[test_case(AnEnv::TeamJaws, ("AN_TEAM_JAWS", Result::Ok("jason".to_string())); "an team jaws")]
-    #[test_case(En::Pog, ("EN_POG", Result::Ok("champ".to_string())); "en pog")]
-    #[test_case(AnEnv::Mdr, ("AN_MDR", Result::Ok("11".to_string())); "an mdr")]
-    #[test_case(En::Mdr, ("EN_MDR", Result::Ok("54".to_string())); "en mdr")]
-    #[test_case(En::Kappa, ("EN_KAPPA", Result::Ok("12".to_string())); "en kappa")]
-    fn when_using_the_getter_on_str_env_it_should_return_the_right_value(env: impl EnvironmentVariable + Copy, expected: (&str, Result<String, String>)) {
+    #[test_case(AnEnv::Lol, ("AN_LOL", EnvEnumResult::Ok("waw".to_string())); "an lol")]
+    #[test_case(AnEnv::TeamJaws, ("AN_TEAM_JAWS", EnvEnumResult::Ok("jason".to_string())); "an team jaws")]
+    #[test_case(En::Pog, ("EN_POG", EnvEnumResult::Ok("champ".to_string())); "en pog")]
+    #[test_case(AnEnv::Mdr, ("AN_MDR", EnvEnumResult::Ok("11".to_string())); "an mdr")]
+    #[test_case(En::Mdr, ("EN_MDR", EnvEnumResult::Ok("54".to_string())); "en mdr")]
+    #[test_case(En::Kappa, ("EN_KAPPA", EnvEnumResult::Ok("12".to_string())); "en kappa")]
+    fn when_using_the_getter_on_str_env_it_should_return_the_right_value(env: impl EnvironmentVariable + Copy, expected: (&str, EnvEnumResult<String>)) {
         test_env::<String>(env, (expected.0, expected.1));
     }
 
-    #[test_case(AnEnv::Mdr, ("AN_MDR", Result::Ok(11)); "an mdr")]
-    #[test_case(En::Mdr, ("EN_MDR", Result::Ok(54)); "en mdr")]
-    #[test_case(En::Kappa, ("EN_KAPPA", Result::Ok(12)); "en kappa")]
-    #[test_case(AnEnv::Lol, ("AN_LOL", Result::Err("Cannot cast AN_LOL into u32".to_string())); "an lol")]
-    #[test_case(AnEnv::TeamJaws, ("AN_TEAM_JAWS", Result::Err("Cannot cast AN_TEAM_JAWS into u32".to_string())); "an team jaws")]
-    #[test_case(En::Pog, ("EN_POG", Result::Err("Cannot cast EN_POG into u32".to_string())); "en pog")]
-    fn when_using_the_getter_on_number_it_should_return_the_right_value(env: impl EnvironmentVariable + Copy, expected: (&str, Result<u32, String>)) {
+    #[test_case(AnEnv::Mdr, ("AN_MDR", EnvEnumResult::Ok(11)); "an mdr")]
+    #[test_case(En::Mdr, ("EN_MDR", EnvEnumResult::Ok(54)); "en mdr")]
+    #[test_case(En::Kappa, ("EN_KAPPA", EnvEnumResult::Ok(12)); "en kappa")]
+    #[test_case(AnEnv::Lol, ("AN_LOL", EnvEnumResult::IncorrectCast("Cannot cast AN_LOL into u32".to_string())); "an lol")]
+    #[test_case(AnEnv::TeamJaws, ("AN_TEAM_JAWS", EnvEnumResult::IncorrectCast("Cannot cast AN_TEAM_JAWS into u32".to_string())); "an team jaws")]
+    #[test_case(En::Pog, ("EN_POG", EnvEnumResult::IncorrectCast("Cannot cast EN_POG into u32".to_string())); "en pog")]
+    fn when_using_the_getter_on_number_it_should_return_the_right_value(env: impl EnvironmentVariable + Copy, expected: (&str, EnvEnumResult<u32>)) {
         test_env::<u32>(env, expected);
+    }
+
+    fn test_env<T: FromStr + PartialEq + Debug + Clone>(env: impl EnvironmentVariable + Copy + Sized, expected: (&str, EnvEnumResult<T>)) where <T as std::str::FromStr>::Err: Debug {
+        dotenv::dotenv().ok();
+        assert_eq!(env.get_key(), expected.0);
+        assert_eq!(env.get_casted_value::<T>(), expected.1);
     }
 
     #[test_case("AN_MDR", Some(AnEnv::Mdr); "is present")]
@@ -351,11 +366,5 @@ mod tests {
     fn when_looking_from_string_you_can_get_the_enum_value(key: &str, expected: Option<AnEnv>) {
         assert_eq!(AnEnv::get_enum_value_from_key(key), expected);
         assert_eq!(AnEnv::does_key_exist(key), expected.is_some())
-    }
-
-    fn test_env<T: FromStr + PartialEq + Debug>(env: impl EnvironmentVariable + Copy + Sized, expected: (&str, Result<T, String>)) where <T as std::str::FromStr>::Err: Debug {
-        dotenv::dotenv().ok();
-        assert_eq!(env.get_key(), expected.0);
-        assert_eq!(env.get_casted_value::<T>(), expected.1);
     }
 }
